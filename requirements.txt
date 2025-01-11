@@ -1,7 +1,7 @@
 nltk
 scikit-learn
+scikit-surprise
 psycopg2
 python-dotenv
 streamlit
 streamlit_option_menu
-scikit-surprise
