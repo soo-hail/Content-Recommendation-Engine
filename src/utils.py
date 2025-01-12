@@ -1,3 +1,4 @@
+import pickle
 import requests
 
 # FETCH MOVIE POSTERS FROM TMDB-API
@@ -17,3 +18,13 @@ def fetch_poster(movie_id):
         return full_path
     except Exception as e:
         pass
+    
+    
+with open('src/components/artifacts/corr_matrix.pkl', 'rb') as f:
+        corrMatrix = pickle.load(f)
+        
+def get_similar_movie(movie_id, rating):
+    similar_ratings = corrMatrix[movie_id] * (rating - 2.5)
+    similar_ratings = similar_ratings.sort_values(ascending = False)
+    
+    return similar_ratings
