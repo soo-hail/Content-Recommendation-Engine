@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 # LOAD FUNCTION THAT FETCHES-POSTER FOR MOVIES.
 from src.utils import fetch_poster
+from src.utils import get_similar_movie
 
 # Load Environment Variables from .env file
 load_dotenv()
@@ -51,7 +52,7 @@ with st.sidebar:
 
 if selected == 'Search':
     # LOAD THE PROCESSED-DATA(AS DATAFRAME) AND CONSINE-SIMILARITY MATRIX.
-    with open('src/components/artifacts/movie_data.pkl', 'rb') as f:
+    with open('src/components/artifacts/content_recommendation_data.pkl', 'rb') as f:
         df, cosine_sim = pickle.load(f)
     
     # FUNCTION TO GET MOVIE-RECOMENDATION.
@@ -94,18 +95,18 @@ if selected == 'Search':
 elif selected == "Home":
     # HOME PAGE
     # LOAD DATA-FRAME FROM pickle FILE.
-    with open('src/components/artifacts/genres_data.pkl', 'rb') as f:
-        genres_df = pickle.load(f)
+    with open('src/components/artifacts/filtered_movies.pkl', 'rb') as f:
+        filtered_movies_df = pickle.load(f)
     
     input_movie = st.text_input('Watch Movie')
     
-    genres_list = genres_df['genres'].unique()
+    genres_list = filtered_movies_df['genres'].unique()
     genres_list = genres_list[(genres_list != None) & (genres_list != 'TV Movie') & (genres_list != 'Foreign')]
 
     if input_movie:
         # FETCH MOVIE-TITLE FROM MOVIE-ID.
         input_movie = int(input_movie)
-        title = genres_df[genres_df['id'] == input_movie]['original_title'].iloc[0]
+        title = filtered_movies_df[filtered_movies_df['id'] == input_movie]['title'].iloc[0]
         
         # ADD DATA TO THE DATA-BASE.
         cursor.execute('''
@@ -117,10 +118,9 @@ elif selected == "Home":
     # DISPLAY MOVIE POSTERS IN HOME-PAGE.
     for genre in genres_list:
         st.subheader(f"{genre} Movies")
-        
+         
         # Filter movies by genre and pick 10 random movies (or all if less than 10)
-        # genre_movies = genres_df[genres_df['genres'] == genre]['id'].drop_duplicates().head(10).tolist()
-        genre_movies = genres_df[genres_df['genres'] == genre]['id'].drop_duplicates().sample(n=10).tolist()
+        genre_movies = filtered_movies_df[filtered_movies_df['genres'] == genre]['id'].drop_duplicates().sample(n=10).tolist()
         
         # Create columns for displaying posters
         cols = st.columns(10)
@@ -133,17 +133,32 @@ elif selected == "Home":
                 st.markdown(
                     f"""
                     <p style="margin-bottom: 0.2rem;">TMDB {movie_id}</p>
-                    <p style="margin-top: 0; margin-bottom: 0.5rem;">{genres_df[genres_df['id'] == movie_id]['original_title'].iloc[0]}</p>
+                    <p style="margin-top: 0; margin-bottom: 0.5rem;">{filtered_movies_df[filtered_movies_df['id'] == movie_id]['title'].iloc[0]}</p>
                     """,
                     unsafe_allow_html=True
                 )
                 
     
 elif selected == 'Trending':
-    # TRENDING PAGE
-    st.title("Trending Page")
-    st.write("Check out the trending content!")
-
+    st.header('Top Recommendations')
+    
+    query = "SELECT movieid FROM user_history;"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    
+    movie_ids = [row[0] for row in rows]
+    
+    for id in movie_ids:
+        cols = st.columns(5) # 5 RECOMMENDATIONS FOR EACH MOVIE.
+        movies = get_similar_movie(id, 4)[:5]
+        
+        for col, i in zip(cols, movies):
+            try:
+                with col:
+                    st.image(fetch_poster(i), width = 150)
+            except Exception as e:
+                pass
+        
 elif selected == 'Favorites':
     # FAVORITES PAGE
     st.title("Favorites")
